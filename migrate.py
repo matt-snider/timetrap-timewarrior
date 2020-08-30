@@ -4,13 +4,16 @@ from argparse import ArgumentParser
 from datetime import datetime
 
 
-def migrate(db_path, timew_path, dry_run, adjust):
+def migrate(db_path, timew_path, dry_run, adjust, where):
     """ Migrate time entries from timetrap to timewarrior """
 
     conn = sqlite3.connect(db_path)
 
+    if where:
+        where = f'where {where}'
+
     # See schema: https://github.com/samg/timetrap/blob/master/lib/timetrap/schema.rb
-    for (_, note, start, end, sheet) in conn.execute('select * from entries'):
+    for (_, note, start, end, sheet) in conn.execute('select * from entries {}'.format(where)):
         print(f'Import {sheet}: {start} to {end}')
 
         # Strip the leading _ from archived sheets
@@ -56,10 +59,14 @@ if __name__ == '__main__':
     parser.add_argument('--adjust', action='store_true',
         help='Whether to add the :adjust hint to generated commands '
         + 'to automatically correct overlapping intervals.')
+    parser.add_argument('--where', metavar='WHERE_CLAUSE',
+        help='A SQL where clause to filter the timetrap entries '
+        + "(e.g. --where \"start > '2020-01-01'\")")
 
     args = parser.parse_args()
     migrate(
         args.database_path,
         args.timew_path,
         args.dry_run,
-        args.adjust)
+        args.adjust,
+        args.where)
